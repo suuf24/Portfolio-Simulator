@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #011554;
+            color: #ffffff;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #011554; }
+        ::-webkit-scrollbar-thumb { background: #1b3687; border-radius: 0px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ffba09; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; margin: 0; 
+        }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Flat Design Elements */
+        .flat-card {
+            background-color: #011f7b;
+            border: 2px solid #1b3687;
+            border-radius: 8px;
+        }
+        .flat-button {
+            background-color: #ffba09;
+            color: #011f7b;
+            font-weight: 700;
+            border: 2px solid #ffba09;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .flat-button:hover {
+            background-color: #e0a408;
+            border-color: #e0a408;
+        }
+        .flat-input {
+            background-color: #011247;
+            border: 2px solid #1b3687;
+            border-radius: 6px;
+            color: #ffffff;
+            transition: border-color 0.2s ease;
+        }
+        .flat-input:focus {
+            outline: none;
+            border-color: #ffba09;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        appBg: '#011554',
+                        cardBg: '#011f7b',
+                        inputBg: '#011247',
+                        borderColor: '#1b3687',
+                        textMuted: '#94a8d6',
+                        accentRed: '#ff4d4f', 
+                        accentGreen: '#00e676', 
+                        mainBlue: '#011f7b', 
+                        accentGold: '#ffba09', 
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col p-4 lg:p-6">
+
+    <div id="balanceModal" class="fixed inset-0 bg-[#011554]/95 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200">
+        <div id="balanceModalCard" class="flat-card p-8 w-[90%] max-w-sm scale-95 transition-transform duration-200 relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-textMuted hover:text-accentGold transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 class="text-2xl font-extrabold mb-2 text-accentGold">Initial Margin</h3>
+            <p class="text-sm text-textMuted mb-6">Set your starting balance for the simulation.</p>
+            
+            <div class="relative mb-6">
+                <span class="absolute left-4 top-3.5 text-textMuted font-bold">$</span>
+                <input type="number" id="initBalanceModal" onkeypress="if(event.key === 'Enter') confirmBalance()" class="w-full flat-input pl-8 pr-4 py-3 font-bold" placeholder="0.00">
+            </div>
+            
+            <button onclick="confirmBalance()" class="w-full flat-button py-3 text-lg">
+                Confirm Balance
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-[1600px] w-full mx-auto flex-1 flex flex-col space-y-4 lg:space-y-6 overflow-hidden">
+        
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 flex-shrink-0">
+            
+            <div class="space-y-3">
+                <div class="inline-flex items-center gap-2 bg-accentGold text-mainBlue px-3 py-1.5 rounded text-xs font-extrabold tracking-widest uppercase">
+                    <div class="w-2 h-2 bg-mainBlue"></div>
+                    Simulation Active
+                </div>
+                <div>
+                    <h1 class="text-4xl lg:text-5xl font-extrabold tracking-tight mb-2">Portfolio <span class="text-accentGold">Simulator</span></h1>
+                    <p class="text-textMuted text-sm font-medium">Calculate exact net PnL, maker/taker fees, and balance growth.</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-row gap-4 w-full lg:w-auto">
+                <div class="flat-card p-5 lg:p-6 min-w-[200px] lg:min-w-[280px] flex-1 relative group">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-textMuted text-xs font-bold uppercase tracking-wider">Net Balance</p>
+                        <button onclick="openModal()" class="bg-inputBg hover:bg-accentGold hover:text-mainBlue text-accentGold border-2 border-accentGold p-1.5 rounded transition-colors flex items-center justify-center" title="Add Initial Margin">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                    <p class="text-3xl lg:text-4xl font-extrabold mb-1 text-accentGold" id="displayBalance">$0.00</p>
+                    <p class="text-textMuted text-xs font-medium">Available Balance</p>
+                    
+                    <svg class="absolute bottom-4 right-4 w-20 h-6 lg:w-24 lg:h-8 opacity-50" viewBox="0 0 100 30" fill="none" stroke="#ffba09" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M0 25 L10 22 L20 28 L30 20 L40 24 L50 15 L60 18 L70 10 L80 15 L90 5 L100 2" />
+                    </svg>
+                </div>
+
+                <div class="flat-card p-5 lg:p-6 min-w-[200px] lg:min-w-[280px] flex-1 relative">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-textMuted text-xs font-bold uppercase tracking-wider">Total Return</p>
+                        <span id="displayTotalRoi" class="bg-inputBg border-2 border-borderColor text-textMuted px-2 py-0.5 rounded text-xs font-bold">0.00%</span>
+                    </div>
+                    <p class="text-3xl lg:text-4xl font-extrabold text-white mb-1" id="displayTotalPnl">$0.00</p>
+                    <p class="text-transparent text-xs select-none">.</p>
+                    
+                    <svg class="absolute bottom-4 right-4 w-20 h-6 lg:w-24 lg:h-8 opacity-50" viewBox="0 0 100 30" fill="none" stroke="#ff4d4f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M0 20 L10 25 L20 18 L30 22 L40 15 L50 20 L60 10 L70 15 L80 5 L90 8 L100 2" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0">
+            
+            <div class="w-full lg:w-80 xl:w-96 flex-shrink-0 flex flex-col min-h-0">
+                <div class="flat-card p-6 flex-1 overflow-y-auto flex flex-col" id="tradeFormContainer" style="opacity: 0.5; pointer-events: none;">
+                    
+                    <div class="flex items-center gap-3 mb-6 flex-shrink-0">
+                        <div class="w-7 h-7 rounded bg-accentGold text-mainBlue flex items-center justify-center text-sm font-extrabold">1</div>
+                        <h2 class="text-lg font-extrabold uppercase tracking-wide">Execution</h2>
+                    </div>
+                    
+                    <div class="space-y-5 flex-1">
+                        <div>
+                            <label class="block text-xs text-textMuted font-bold uppercase mb-2">Sizing Mode</label>
+                            <div class="relative">
+                                <select id="tradeMode" onchange="togglePartialInput()" class="w-full flat-input px-4 py-3 font-medium appearance-none">
+                                    <option value="allin">100% Total Balance</option>
+                                    <option value="partial">Custom Percentage</option>
+                                </select>
+                                <svg class="w-4 h-4 text-accentGold absolute right-4 top-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                            </div>
+                        </div>
+
+                        <div id="partialInputGroup" class="hidden">
+                            <label class="block text-xs text-textMuted font-bold uppercase mb-2">Allocation</label>
+                            <div class="relative">
+                                <input type="number" id="marginPercent" value="10" min="1" max="100" onkeypress="if(event.key === 'Enter') executeTrade()" class="w-full flat-input px-4 py-3 font-medium">
+                                <span class="absolute right-4 top-3.5 text-textMuted font-bold">%</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-textMuted font-bold uppercase mb-2">Leverage</label>
+                                <div class="relative">
+                                    <input type="number" id="leverage" value="10" min="1" max="125" onkeypress="if(event.key === 'Enter') executeTrade()" class="w-full flat-input pl-4 pr-8 py-3 font-medium">
+                                    <span class="absolute right-3 top-3.5 text-textMuted font-bold">x</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-textMuted font-bold uppercase mb-2">Price Move</label>
+                                <div class="relative">
+                                    <input type="number" id="pnlPercent" placeholder="0.00" onkeypress="if(event.key === 'Enter') executeTrade()" class="w-full flat-input pl-4 pr-8 py-3 font-medium">
+                                    <span class="absolute right-3 top-3.5 text-textMuted font-bold">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="executeTrade()" class="w-full mt-8 flat-button py-4 text-sm tracking-wider uppercase flex items-center justify-center gap-2">
+                        Execute Order
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 flat-card flex flex-col min-h-0 relative overflow-hidden">
+                <div class="p-6 flex-1 flex flex-col min-h-0">
+                    <div class="flex justify-between items-center mb-6 flex-shrink-0 border-b-2 border-borderColor pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded bg-accentGold text-mainBlue flex items-center justify-center text-sm font-extrabold">2</div>
+                            <h2 class="text-lg font-extrabold uppercase tracking-wide">Ledger</h2>
+                        </div>
+                        <button onclick="clearHistory()" class="bg-inputBg border-2 border-borderColor hover:border-accentRed text-textMuted hover:text-accentRed px-4 py-2 rounded transition-colors flex items-center gap-2 text-xs font-bold uppercase">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            Clear
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto pr-2">
+                        <table class="w-full text-left whitespace-nowrap border-collapse">
+                            <thead class="sticky top-0 bg-cardBg z-10">
+                                <tr class="text-xs text-textMuted font-bold uppercase tracking-wider">
+                                    <th class="py-3 px-4 border-b-2 border-borderColor w-24">Time</th>
+                                    <th class="py-3 px-4 border-b-2 border-borderColor">Position</th>
+                                    <th class="py-3 px-4 border-b-2 border-borderColor">Move</th>
+                                    <th class="py-3 px-4 border-b-2 border-borderColor">Fees</th>
+                                    <th class="py-3 px-4 border-b-2 border-borderColor">Realized PnL</th>
+                                    <th class="py-3 px-4 border-b-2 border-borderColor text-right">Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody" class="text-sm">
+                                <tr>
+                                    <td colspan="6" class="py-16 text-center text-textMuted font-medium">Click the + icon on Net Balance to set initial margin.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between text-textMuted text-sm py-2 flex-shrink-0 font-medium">
+            <p>&copy; 2026 Portfolio Simulator.</p>
+            <div class="flex items-center gap-6 mt-3 sm:mt-0">
+                <a href="https://github.com/suuf24" target="_blank" class="text-accentGold hover:text-white transition-colors flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path></svg>
+                    <span class="font-bold">suuf24</span>
+                </a>
+                <a href="https://instagram.com/suuf24" target="_blank" class="text-accentGold hover:text-white transition-colors flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.88z"></path></svg>
+                    <span class="font-bold">suuf24</span>
+                </a>
+                <a href="https://twitter.com/0xibex" target="_blank" class="text-accentGold hover:text-white transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+                    <span class="font-bold">0xibex</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let initialBalance = 0;
+        let currentBalance = 0;
+        let trades = [];
+        let tradeCounter = 0;
+
+        const takerFeeRate = 0.0005;
+        const makerFeeRate = 0.0002;
+
+        const formatUSD = (num) => {
+            const isNegative = num < 0;
+            const absoluteNum = Math.abs(num);
+            const formatted = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(absoluteNum);
+            return (isNegative ? '-' : '') + '$' + formatted;
+        };
+        const formatPercent = (num) => (num > 0 ? '+' : '') + num.toFixed(2) + '%';
+        const getTime = () => {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
+        }
+
+        function openModal() {
+            const modal = document.getElementById('balanceModal');
+            const card = document.getElementById('balanceModalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+            document.getElementById('initBalanceModal').focus();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('balanceModal');
+            const card = document.getElementById('balanceModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.add('scale-95');
+            document.getElementById('initBalanceModal').value = '';
+        }
+
+        function confirmBalance() {
+            const inputVal = parseFloat(document.getElementById('initBalanceModal').value);
+            if (isNaN(inputVal) || inputVal <= 0) return;
+            
+            initialBalance = inputVal;
+            currentBalance = inputVal;
+            trades = [];
+            tradeCounter = 0;
+            
+            document.getElementById('tradeFormContainer').style.opacity = '1';
+            document.getElementById('tradeFormContainer').style.pointerEvents = 'auto';
+            
+            closeModal();
+            updateUI();
+        }
+
+        function togglePartialInput() {
+            const mode = document.getElementById('tradeMode').value;
+            const partialInput = document.getElementById('partialInputGroup');
+            if (mode === 'partial') {
+                partialInput.classList.remove('hidden');
+            } else {
+                partialInput.classList.add('hidden');
+            }
+        }
+
+        function executeTrade() {
+            const mode = document.getElementById('tradeMode').value;
+            const leverage = parseFloat(document.getElementById('leverage').value);
+            const pnlPercent = parseFloat(document.getElementById('pnlPercent').value);
+
+            if (isNaN(leverage) || leverage < 1 || isNaN(pnlPercent)) return;
+            if (currentBalance <= 0) return alert("Balance depleted.");
+
+            let partialPercent = 100;
+            if (mode === 'partial') {
+                partialPercent = parseFloat(document.getElementById('marginPercent').value);
+                if (isNaN(partialPercent) || partialPercent <= 0 || partialPercent > 100) return;
+            }
+
+            tradeCounter++;
+            trades.push({
+                id: tradeCounter,
+                time: getTime(),
+                mode: mode,
+                marginPercent: partialPercent,
+                leverage: leverage,
+                pnlPercent: pnlPercent
+            });
+
+            document.getElementById('pnlPercent').value = ''; 
+            document.getElementById('pnlPercent').focus();
+            recalculateHistory();
+            
+            const tableContainer = document.getElementById('historyBody').parentElement.parentElement;
+            setTimeout(() => { tableContainer.scrollTop = tableContainer.scrollHeight; }, 50);
+        }
+
+        function recalculateHistory() {
+            let tempBalance = initialBalance;
+            
+            trades.forEach(t => {
+                t.balanceBefore = tempBalance;
+                
+                if (t.mode === 'allin') {
+                    t.margin = tempBalance;
+                } else {
+                    t.margin = tempBalance * (t.marginPercent / 100);
+                }
+
+                t.positionSize = t.margin * t.leverage;
+                t.totalFee = (t.positionSize * takerFeeRate) + (t.positionSize * makerFeeRate);
+                t.grossPnL = t.positionSize * (t.pnlPercent / 100);
+                t.netPnL = t.grossPnL - t.totalFee;
+                t.roi = (t.netPnL / t.margin) * 100;
+                
+                tempBalance += t.netPnL;
+                if (tempBalance < 0) tempBalance = 0; 
+                t.balanceAfter = tempBalance;
+            });
+
+            currentBalance = tempBalance;
+            updateUI();
+        }
+
+        function clearHistory() {
+            trades = [];
+            tradeCounter = 0;
+            currentBalance = initialBalance;
+            
+            if(initialBalance === 0) {
+                document.getElementById('tradeFormContainer').style.opacity = '0.5';
+                document.getElementById('tradeFormContainer').style.pointerEvents = 'none';
+            }
+            updateUI();
+            
+            if(initialBalance === 0) {
+                 document.getElementById('historyBody').innerHTML = '<tr><td colspan="6" class="py-16 text-center text-textMuted font-medium">Click the + icon on Net Balance to set initial margin.</td></tr>';
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('displayBalance').innerText = formatUSD(currentBalance);
+            
+            const totalNet = currentBalance - initialBalance;
+            const totalRoi = initialBalance > 0 ? (totalNet / initialBalance) * 100 : 0;
+            
+            const totalNetEl = document.getElementById('displayTotalPnl');
+            const totalRoiEl = document.getElementById('displayTotalRoi');
+            
+            totalNetEl.innerText = (totalNet > 0 ? '+' : '') + formatUSD(totalNet);
+            
+            if (totalNet > 0) {
+                totalNetEl.className = 'text-3xl lg:text-4xl font-extrabold text-accentGreen mb-1';
+                totalRoiEl.className = 'bg-accentGreen/20 border-2 border-accentGreen text-accentGreen px-2 py-0.5 rounded text-xs font-bold';
+                totalRoiEl.innerText = '+' + totalRoi.toFixed(2) + '%';
+            } else if (totalNet < 0) {
+                totalNetEl.className = 'text-3xl lg:text-4xl font-extrabold text-accentRed mb-1';
+                totalRoiEl.className = 'bg-accentRed/20 border-2 border-accentRed text-accentRed px-2 py-0.5 rounded text-xs font-bold';
+                totalRoiEl.innerText = totalRoi.toFixed(2) + '%';
+            } else {
+                totalNetEl.className = 'text-3xl lg:text-4xl font-extrabold text-white mb-1';
+                totalRoiEl.className = 'bg-inputBg border-2 border-borderColor text-textMuted px-2 py-0.5 rounded text-xs font-bold';
+                totalRoiEl.innerText = '0.00%';
+            }
+
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+
+            if (trades.length === 0 && initialBalance > 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-16 text-center text-textMuted font-medium">Simulation ready. Execute an order to see ledger updates.</td></tr>`;
+                return;
+            } else if (trades.length === 0) {
+                return;
+            }
+
+            [...trades].forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-inputBg transition-colors border-b-2 border-borderColor/50";
+                
+                const isProfit = t.netPnL >= 0;
+                const pnlColorClass = isProfit ? 'text-accentGreen' : 'text-accentRed';
+                const sign = isProfit ? '+' : '';
+
+                tr.innerHTML = `
+                    <td class="py-4 px-4 text-textMuted font-medium text-sm">
+                        ${t.time}
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="font-bold text-white mb-0.5">${formatUSD(t.positionSize)}</div>
+                        <div class="text-xs text-textMuted font-medium flex items-center">
+                            Margin: ${formatUSD(t.margin)} 
+                            <span class="ml-2 bg-inputBg border-2 border-borderColor text-accentGold rounded px-1.5 py-0.5 text-[10px] font-bold leading-none">${t.leverage}x</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="font-bold text-white mb-0.5">${sign}${formatUSD(t.grossPnL)}</div>
+                        <div class="text-xs font-bold ${t.pnlPercent >= 0 ? 'text-accentGreen' : 'text-accentRed'}">${t.pnlPercent > 0 ? '+' : ''}${t.pnlPercent}%</div>
+                    </td>
+                    <td class="py-4 px-4 text-textMuted font-medium text-sm">-${formatUSD(t.totalFee)}</td>
+                    <td class="py-4 px-4">
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold ${pnlColorClass} text-base">${sign}${formatUSD(t.netPnL)}</span>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border-2 ${isProfit ? 'border-accentGreen/50 text-accentGreen bg-accentGreen/10' : 'border-accentRed/50 text-accentRed bg-accentRed/10'}">
+                                ${formatPercent(t.roi)}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 font-extrabold text-white text-base text-right">${formatUSD(t.balanceAfter)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
